@@ -1,0 +1,136 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.animation import FuncAnimation
+import math
+import tkinter as tk
+from tkinter import ttk
+
+#The constant to be inserted by users(.....)
+def run_simulation(del_, lamda, tmax, n, ce, cg, alfa):
+    factorials = np.array([math.factorial(i) for i in range(n+1)], dtype=np.float64)
+    cn = np.exp(-alfa**2 / 2) * (alfa**np.arange(n)) / np.sqrt(factorials[:n])
+    cn_plus_1 = np.exp(-alfa**2 / 2) * (alfa**(np.arange(1, n+1))) / np.sqrt(factorials[1:n+1])
+
+    #Generalized rabi freq.
+    def omega(i):
+        return np.sqrt(del_**2 + 4 * lamda**2 * (i + 1))
+
+    #Defining the constant an, bn, and the equation
+    def a_n(t, i):
+        om = omega(i)
+        cos = np.cos(om * t / 2)
+        sin = np.sin(om * t / 2)
+        exp = np.exp(1j * del_ * t / 2)
+        part1 = ce * cn[i] * (cos - 1j * del_ / om * sin)
+        part2 = -2j * lamda * np.sqrt(i + 1) / om * cg * cn_plus_1[i] * sin * exp
+        return part1 + part2
+
+    def b_n(t, i):
+        om = omega(i)
+        cos = np.cos(om * t / 2)
+        sin = np.sin(om * t / 2)
+        exp = np.exp(-1j * del_ * t / 2)
+        part1 = cg * cn_plus_1[i] * (cos - 1j * del_ / om * sin)
+        part2 = -2j * lamda * np.sqrt(i + 1) / om * ce * cn[i] * sin * exp
+        return part1 + part2
+
+    #Defining the components of bloch vector
+    def s1(t):
+        a = a_n(t, np.arange(n))
+        b = b_n(t, np.arange(n))
+        return np.real(np.sum(a * np.conj(b) + np.conj(a) * b))
+
+    def s2(t):
+        a = a_n(t, np.arange(n))
+        b = b_n(t, np.arange(n))
+        return np.imag(np.sum(a * np.conj(b) - np.conj(a) * b))
+
+    def s3(t):
+        a = a_n(t, np.arange(n))
+        b = b_n(t, np.arange(n))
+        return np.real(np.sum(np.abs(a)**2 - np.abs(b)**2))
+
+    times = np.linspace(0, tmax, 500)
+    s1 = np.array([s1(t) for t in times])
+    s2 = np.array([s2(t) for t in times])
+    s3 = np.array([s3(t) for t in times])
+
+    norms = np.sqrt(s1**2 + s2**2 + s3**2)
+    s1 /= norms
+    s2 /= norms
+    s3 /= norms
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    u = np.linspace(0, 2 * np.pi, 100)
+    v = np.linspace(0, np.pi, 100)
+    x = np.outer(np.cos(u), np.sin(v))
+    y = np.outer(np.sin(u), np.sin(v))
+    z = np.outer(np.ones(np.size(u)), np.cos(v))
+    ax.plot_wireframe(x, y, z, color='gray', alpha=0.5)
+
+    ax.set_xlim([-1, 1])
+    ax.set_ylim([-1, 1])
+    ax.set_zlim([-1, 1])
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    quiver = [ax.quiver(0, 0, 0, s1[0], s2[0], s3[0], color='r', arrow_length_ratio=0.1)]
+
+    def update(num, s1, s2, s3, quiver):
+        quiver[0].remove()
+        quiver[0] = ax.quiver(0, 0, 0, s1[num], s2[num], s3[num], color='r', arrow_length_ratio=0.1)
+        return quiver,
+
+    ani = FuncAnimation(fig, update, frames=len(times), fargs=(s1, s2, s3, quiver), interval=20, blit=False)
+    plt.show()
+
+def start_simulation():
+    del_ = float(del_entry.get())
+    lamda = float(lamda_entry.get())
+    tmax = float(tmax_entry.get())
+    n = int(n_entry.get())
+    ce = float(ce_entry.get())
+    cg = float(cg_entry.get())
+    alfa = float(alfa_entry.get())
+    run_simulation(del_, lamda, tmax, n, ce, cg, alfa)
+
+#The GUI part
+root = tk.Tk()
+root.title("Quantum Simulation Parameters")
+
+ttk.Label(root, text="Delta:").grid(row=0, column=0, padx=10, pady=10)
+del_entry = ttk.Entry(root)
+del_entry.grid(row=0, column=1, padx=10, pady=10)
+
+ttk.Label(root, text="Lambda:").grid(row=1, column=0, padx=10, pady=10)
+lamda_entry = ttk.Entry(root)
+lamda_entry.grid(row=1, column=1, padx=10, pady=10)
+
+ttk.Label(root, text="t_max:").grid(row=2, column=0, padx=10, pady=10)
+tmax_entry = ttk.Entry(root)
+tmax_entry.grid(row=2, column=1, padx=10, pady=10)
+
+ttk.Label(root, text="N:").grid(row=3, column=0, padx=10, pady=10)
+n_entry = ttk.Entry(root)
+n_entry.grid(row=3, column=1, padx=10, pady=10)
+
+ttk.Label(root, text="c_e:").grid(row=4, column=0, padx=10, pady=10)
+ce_entry = ttk.Entry(root)
+ce_entry.grid(row=4, column=1, padx=10, pady=10)
+
+ttk.Label(root, text="c_g:").grid(row=5, column=0, padx=10, pady=10)
+cg_entry = ttk.Entry(root)
+cg_entry.grid(row=5, column=1, padx=10, pady=10)
+
+ttk.Label(root, text="Alpha:").grid(row=6, column=0, padx=10, pady=10)
+alfa_entry = ttk.Entry(root)
+alfa_entry.grid(row=6, column=1, padx=10, pady=10)
+
+run_button = ttk.Button(root, text="Run Simulation", command=start_simulation)
+run_button.grid(row=7, column=0, columnspan=2, padx=10, pady=10)
+
+root.mainloop()
