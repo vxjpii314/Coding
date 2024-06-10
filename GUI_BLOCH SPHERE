@@ -79,13 +79,21 @@ def run_simulation(del_, lamda, tmax, n, ce, cg, alfa):
     ax.set_zlabel('Z')
 
     quiver = [ax.quiver(0, 0, 0, s1[0], s2[0], s3[0], color='r', arrow_length_ratio=0.1)]
+    
+    #tracing element
+    trace, = ax.plot([], [], [], 'r', lw=2)
 
-    def update(num, s1, s2, s3, quiver):
+
+    def update(num, s1, s2, s3, quiver, trace):
         quiver[0].remove()
         quiver[0] = ax.quiver(0, 0, 0, s1[num], s2[num], s3[num], color='r', arrow_length_ratio=0.1)
+
+        trace.set_data(s1[:num+1], s2[:num+1])
+        trace.set_3d_properties(s3[:num+1])
+
         return quiver,
 
-    ani = FuncAnimation(fig, update, frames=len(times), fargs=(s1, s2, s3, quiver), interval=20, blit=False)
+    ani = FuncAnimation(fig, update, frames=len(times), fargs=(s1, s2, s3, quiver, trace), interval=20, blit=False)
     plt.show()
 
 def start_simulation():
